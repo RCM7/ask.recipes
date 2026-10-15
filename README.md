@@ -1,6 +1,7 @@
 # ask.recipes
 
 [![ask.recipes MCP connector](https://glama.ai/mcp/connectors/recipes.ask/ask-recipes/badges/score.svg)](https://glama.ai/mcp/connectors/recipes.ask/ask-recipes)
+[![LobeHub listing](https://lobehub.com/badge/mcp/ask-recipes)](https://lobehub.com/mcp/ask-recipes)
 Also on [Smithery](https://smithery.ai/servers/rcm7/ask-recipes).
 
 Your AI's cookbook. A remote MCP server: connect it once and your agent finds recipes, checks nutrition, matches what is in the fridge, saves your favourites and keeps your own recipes.
