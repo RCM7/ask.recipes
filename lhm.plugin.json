@@ -6,6 +6,52 @@
   "homepage": "https://ask.recipes",
   "identifier": "ask-recipes",
   "name": "ask.recipes",
+  "prompts": [
+    {
+      "name": "cook_what_i_have",
+      "title": "Cook with what I have",
+      "description": "Turn the ingredients on hand into a ranked list of recipes, with what each one is missing.",
+      "arguments": [
+        {
+          "name": "ingredients",
+          "description": "What is in the fridge or pantry, comma separated.",
+          "required": true
+        },
+        {
+          "name": "minutes",
+          "description": "Most time you want to spend, total."
+        }
+      ]
+    },
+    {
+      "name": "dinner_tonight",
+      "title": "Dinner tonight",
+      "description": "Pick a well-rated dinner for tonight within a time, serving and diet constraint.",
+      "arguments": [
+        {
+          "name": "minutes",
+          "description": "Most time you want to spend, total."
+        },
+        {
+          "name": "servings",
+          "description": "How many people are eating."
+        },
+        {
+          "name": "diet",
+          "description": "Any constraint: vegetarian, vegan, gluten-free, dairy-free, nut-free."
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "name": "docs",
+      "title": "ask.recipes docs",
+      "uri": "ask-recipes://docs",
+      "description": "How to connect, what to ask, what each tool does, defaults and support.",
+      "mimeType": "text/markdown"
+    }
+  ],
   "tools": [
     {
       "name": "find_by_ingredients",
@@ -761,7 +807,7 @@
       }
     }
   ],
-  "version": "1.0.0",
+  "version": "1.1.0",
   "icon": "https://ask.recipes/icon-512.png",
   "tags": [
     "recipes",
