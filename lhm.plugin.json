@@ -54,120 +54,555 @@
   ],
   "tools": [
     {
-      "name": "find_by_ingredients",
-      "title": "Find recipes by ingredients on hand",
-      "description": "Find recipes that use ingredients the user already has: leftovers, a full fridge, an ingredient about to turn. Ranks by how many of those ingredients a recipe uses and how few extra ones it needs. Each result links to its source.",
+      "name": "add_to_pantry",
+      "title": "Add to the pantry",
+      "description": "Add or restock pantry items from what the user says in passing: \"bought rice and two chickens\", \"here's what's in the fridge\". An item already in the pantry gets the new quantity. Names are matched loosely, so 'Eggs' and 'eggs' are the same item. Returns the whole pantry after the change.",
       "inputSchema": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
-          "ingredients": {
+          "add": {
+            "description": "items to add or update; an item already in the pantry gets the new quantity",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "description": "ingredient name, e.g. 'eggs' or 'basmati rice'",
+                  "type": "string"
+                },
+                "quantity": {
+                  "description": "optional amount in the user's words, e.g. '6', '500 g', 'half a bag'",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "type": "object"
+            },
             "type": [
               "null",
               "array"
-            ],
+            ]
+          }
+        },
+        "required": [
+          "add"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "items": {
+            "items": {
+              "properties": {
+                "name": {
+                  "description": "ingredient name, e.g. 'eggs' or 'basmati rice'",
+                  "type": "string"
+                },
+                "quantity": {
+                  "description": "optional amount in the user's words, e.g. '6', '500 g', 'half a bag'",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Add to the pantry"
+      }
+    },
+    {
+      "name": "connect_cookidoo",
+      "title": "Connect Cookidoo (Thermomix / Bimby)",
+      "description": "Check whether the user's Cookidoo account (the Thermomix / Bimby recipe platform) is connected, and when it is not, return a one-time link where they enter their Cookidoo login. For \"connect my Thermomix\", \"link my Bimby\", or before the first send_to_thermomix. Give the user the link; it works once and expires in 15 minutes.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "connect_url": {
+            "type": "string"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "devices": {
+            "description": "every Thermomix paired with the account",
             "items": {
               "type": "string"
             },
-            "description": "ingredients on hand, e.g. ['oats','milk','eggs','skyr','berries']"
+            "type": [
+              "null",
+              "array"
+            ]
           },
-          "query": {
-            "type": "string",
-            "description": "optional free-text to narrow results, e.g. 'breakfast pancakes'"
+          "email": {
+            "type": "string"
           },
-          "max_total_minutes": {
+          "language": {
+            "description": "language of the Cookidoo account; write everything sent to it in this language",
+            "type": "string"
+          },
+          "last_error": {
+            "type": "string"
+          },
+          "machine": {
+            "description": "Thermomix model the recipes are written for",
+            "type": "string"
+          },
+          "units": {
+            "description": "units the Thermomix works in",
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "connected"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Connect Cookidoo (Thermomix / Bimby)"
+      }
+    },
+    {
+      "name": "cooked_history",
+      "title": "What the user cooked",
+      "description": "List what the user cooked and when, newest first, for \"what did we cook last week\", \"when did I last make the lasagna\", \"what have we been eating\". Call it before planning a week so the plan avoids repeating recent dishes and ingredients. Each entry carries the day, the user's note and the recipe summary with its source link. Without since, until or recipe_id it covers the last 30 days.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "description": "max entries, default 50, max 200",
             "type": "integer"
           },
-          "min_rating": {
-            "type": "number",
-            "description": "minimum source star rating, default 4.2"
+          "recipe_id": {
+            "description": "only entries for this recipe, for 'when did I last make the lasagna'; lifts the 30-day default",
+            "minimum": 0,
+            "type": "integer"
           },
-          "min_reviews": {
-            "type": "integer",
-            "description": "minimum number of source ratings, default 25"
+          "since": {
+            "description": "first day to include as YYYY-MM-DD; without since, until or recipe_id the last 30 days are returned",
+            "type": "string"
+          },
+          "until": {
+            "description": "last day to include as YYYY-MM-DD, inclusive",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "entries": {
+            "items": {
+              "properties": {
+                "cooked_on": {
+                  "type": "string"
+                },
+                "id": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "note": {
+                  "type": "string"
+                },
+                "recipe": {
+                  "properties": {
+                    "calories": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    },
+                    "carbs_g": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "diets": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "fat_g": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    },
+                    "fiber_g": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    },
+                    "id": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "nutrition_for": {
+                      "type": "string"
+                    },
+                    "protein_g": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    },
+                    "rating": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    },
+                    "rating_count": {
+                      "type": "integer"
+                    },
+                    "scale_class": {
+                      "type": "string"
+                    },
+                    "servings": {
+                      "type": [
+                        "null",
+                        "integer"
+                      ]
+                    },
+                    "source_site": {
+                      "type": "string"
+                    },
+                    "source_url": {
+                      "type": "string"
+                    },
+                    "sugar_g": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    },
+                    "total_minutes": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "rating_count",
+                    "source_site",
+                    "source_url"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "id",
+                "cooked_on",
+                "recipe"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "What the user cooked"
+      }
+    },
+    {
+      "name": "create_cookbook",
+      "title": "Create a cookbook",
+      "description": "Create an empty cookbook, for \"make me a BBQ cookbook\". Not needed before save_recipe, which creates a cookbook it does not know. Fails when a cookbook with that name exists already.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "description": "one line on what goes in it",
+            "type": "string"
+          },
+          "name": {
+            "description": "cookbook name, e.g. 'BBQ', 'Weeknight', 'Christmas'",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "default": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "recipe_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "recipe_count"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Create a cookbook"
+      }
+    },
+    {
+      "name": "delete_cookbook",
+      "title": "Delete a cookbook",
+      "description": "Delete a cookbook by name. No recipe is lost: any recipe that was only in this cookbook moves to the default cookbook. The default cookbook cannot be deleted.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cookbook": {
+            "description": "name of the cookbook to delete; its recipes are kept and any that were in no other cookbook move to the default one",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cookbook"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "deleted": {
+            "type": "string"
+          },
+          "moved_to_default": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted",
+          "moved_to_default"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Delete a cookbook"
+      }
+    },
+    {
+      "name": "disconnect_cookidoo",
+      "title": "Disconnect Cookidoo",
+      "description": "Remove the user's stored Cookidoo login from ask.recipes. Recipes already sent to Cookidoo and recipes imported into ask.recipes stay where they are.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "disconnected": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "disconnected"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Disconnect Cookidoo"
+      }
+    },
+    {
+      "name": "find_by_ingredients",
+      "title": "Find recipes by ingredients on hand",
+      "description": "Find recipes that use ingredients the user already has: leftovers, a full fridge, an ingredient about to turn. Ranks by how many of those ingredients a recipe uses and how few extra ones it needs. The user's pantry counts as on hand too, so a recipe that only needs pantry staples on top of what was passed ranks as nearly complete; with no ingredients passed it cooks from the pantry alone, for \"what can I make with what I have\". Takes the same diet, nutrition and exclude_ingredients filters as search_recipes. Each result links to its source. The user's profile, when set in the app, excludes allergens and dislikes, keeps its diets on and supplies the default time budget; pass max_total_minutes=-1 to lift it.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_friendly": {
+            "description": "true to leave out dishes cooked per portion, for a crowd; recipes not yet classified stay in",
+            "type": "boolean"
+          },
+          "dairy_free": {
+            "description": "only recipes without milk, butter, cheese, cream or yogurt",
+            "type": "boolean"
+          },
+          "exclude_ingredients": {
+            "description": "ingredients to leave out for this search, whole-word match on the ingredient list, e.g. ['chicken','brussels sprouts'] to avoid repeating what the week already has; nuts, gluten and dairy as a word apply the matching diet filter; the profile's allergens and dislikes stay excluded on top",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "feeding": {
+            "description": "how many people are eating, e.g. 10 for a dinner party; from six up, dishes cooked in one vessel (stews, braises, tray bakes, casseroles, soups, roasts) rank ahead of dishes cooked per portion (steaks, burgers, pancakes, stir-fries); nothing is excluded",
+            "type": "integer"
+          },
+          "gluten_free": {
+            "description": "only recipes without wheat, barley, rye, oats or products made from them",
+            "type": "boolean"
+          },
+          "ignore_pantry": {
+            "description": "true to match only the ingredients passed and not count the pantry, for 'using just these'",
+            "type": "boolean"
+          },
+          "ingredients": {
+            "description": "ingredients to cook with, e.g. ['oats','milk','eggs','skyr','berries']; leave empty to cook from the pantry alone",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
           },
           "limit": {
             "type": "integer"
           },
-          "min_calories": {
-            "type": "number",
-            "description": "only recipes with at least this many calories per serving"
-          },
           "max_calories": {
-            "type": "number",
-            "description": "only recipes with at most this many calories per serving, e.g. 300"
-          },
-          "min_protein_g": {
-            "type": "number",
-            "description": "minimum grams of protein per serving, e.g. 10"
-          },
-          "max_fat_g": {
-            "type": "number",
-            "description": "maximum grams of fat per serving"
+            "description": "only recipes with at most this many calories per serving, e.g. 300",
+            "type": "number"
           },
           "max_carbs_g": {
-            "type": "number",
-            "description": "maximum grams of carbohydrates per serving"
+            "description": "maximum grams of carbohydrates per serving",
+            "type": "number"
+          },
+          "max_fat_g": {
+            "description": "maximum grams of fat per serving",
+            "type": "number"
           },
           "max_sugar_g": {
-            "type": "number",
-            "description": "maximum grams of sugar per serving"
+            "description": "maximum grams of sugar per serving",
+            "type": "number"
+          },
+          "max_total_minutes": {
+            "type": "integer"
+          },
+          "min_calories": {
+            "description": "only recipes with at least this many calories per serving",
+            "type": "number"
           },
           "min_fiber_g": {
-            "type": "number",
-            "description": "minimum grams of fiber per serving"
+            "description": "minimum grams of fiber per serving",
+            "type": "number"
+          },
+          "min_protein_g": {
+            "description": "minimum grams of protein per serving, e.g. 10",
+            "type": "number"
+          },
+          "min_rating": {
+            "description": "only recipes the source rates at least this many stars; off unless passed",
+            "type": "number"
+          },
+          "min_reviews": {
+            "description": "only recipes with at least this many source ratings; off unless passed",
+            "type": "integer"
+          },
+          "nut_free": {
+            "description": "only recipes without tree nuts or peanuts; coconut counts as nut-free",
+            "type": "boolean"
+          },
+          "query": {
+            "description": "optional free-text to narrow results, e.g. 'breakfast pancakes'",
+            "type": "string"
+          },
+          "vegan": {
+            "description": "only vegan recipes: vegetarian and no eggs, dairy or honey",
+            "type": "boolean"
+          },
+          "vegetarian": {
+            "description": "only vegetarian recipes: no meat, poultry, fish, seafood or gelatin in the ingredients",
+            "type": "boolean"
           }
         },
-        "required": [
-          "ingredients"
-        ],
-        "additionalProperties": false
+        "type": "object"
       },
       "outputSchema": {
-        "type": "object",
         "properties": {
-          "matches": {
+          "from_pantry": {
+            "type": "boolean"
+          },
+          "ingredients": {
+            "items": {
+              "type": "string"
+            },
             "type": [
               "null",
               "array"
-            ],
+            ]
+          },
+          "matches": {
             "items": {
-              "type": "object",
               "properties": {
-                "id": {
-                  "type": "integer",
-                  "minimum": 0
-                },
-                "name": {
-                  "type": "string"
-                },
-                "description": {
-                  "type": "string"
-                },
-                "total_minutes": {
-                  "type": "integer"
-                },
-                "rating": {
-                  "type": [
-                    "null",
-                    "number"
-                  ]
-                },
-                "rating_count": {
-                  "type": "integer"
-                },
                 "calories": {
-                  "type": [
-                    "null",
-                    "number"
-                  ]
-                },
-                "protein_g": {
-                  "type": [
-                    "null",
-                    "number"
-                  ]
-                },
-                "fat_g": {
                   "type": [
                     "null",
                     "number"
@@ -179,7 +614,19 @@
                     "number"
                   ]
                 },
-                "sugar_g": {
+                "description": {
+                  "type": "string"
+                },
+                "diets": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "fat_g": {
                   "type": [
                     "null",
                     "number"
@@ -191,16 +638,62 @@
                     "number"
                   ]
                 },
+                "id": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "matched_ingredients": {
+                  "type": "integer"
+                },
+                "matched_requested": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "nutrition_for": {
+                  "type": "string"
+                },
+                "protein_g": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "rating": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "rating_count": {
+                  "type": "integer"
+                },
+                "scale_class": {
+                  "type": "string"
+                },
+                "servings": {
+                  "type": [
+                    "null",
+                    "integer"
+                  ]
+                },
                 "source_site": {
                   "type": "string"
                 },
                 "source_url": {
                   "type": "string"
                 },
-                "matched_ingredients": {
-                  "type": "integer"
+                "sugar_g": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
                 },
                 "total_ingredients": {
+                  "type": "integer"
+                },
+                "total_minutes": {
                   "type": "integer"
                 }
               },
@@ -213,79 +706,111 @@
                 "matched_ingredients",
                 "total_ingredients"
               ],
-              "additionalProperties": false
-            }
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "pantry_ingredients": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
           }
         },
         "required": [
-          "matches"
+          "matches",
+          "ingredients"
         ],
-        "additionalProperties": false
+        "type": "object"
       },
       "annotations": {
-        "title": "Find recipes by ingredients on hand",
-        "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
-        "openWorldHint": false
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Find recipes by ingredients on hand"
+      }
+    },
+    {
+      "name": "get_pantry",
+      "title": "What is in the pantry",
+      "description": "List what the user has told you is in their kitchen: pantry, fridge and freezer, with quantities when they gave one. For \"what do I have\", before suggesting a shopping list, or to check an ingredient before recommending a recipe. find_by_ingredients with no ingredients searches from this list directly.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "items": {
+            "items": {
+              "properties": {
+                "name": {
+                  "description": "ingredient name, e.g. 'eggs' or 'basmati rice'",
+                  "type": "string"
+                },
+                "quantity": {
+                  "description": "optional amount in the user's words, e.g. '6', '500 g', 'half a bag'",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "What is in the pantry"
       }
     },
     {
       "name": "get_recipe",
       "title": "Get a recipe in full",
-      "description": "Get one recipe in full: ingredients, step-by-step instructions, times, yield, nutrition and its source link. For when the user picks a recipe from a search or asks how to make it.",
+      "description": "Get one recipe in full: ingredients, step-by-step instructions, times, yield, nutrition and its source link. For when the user picks a recipe from a search or asks how to make it. Pass servings to scale the ingredient quantities, e.g. for meal prep or a crowd; nutrition_for says whether the nutrition numbers are per serving or for the whole yield.",
       "inputSchema": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "id": {
-            "type": "integer",
             "description": "recipe id from a previous search",
-            "minimum": 0
+            "minimum": 0,
+            "type": "integer"
+          },
+          "servings": {
+            "description": "scale ingredient quantities to this many servings; only works when the recipe's yield states servings, nutrition stays per serving",
+            "type": "integer"
           }
         },
         "required": [
           "id"
         ],
-        "additionalProperties": false
+        "type": "object"
       },
       "outputSchema": {
-        "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "name": {
+          "attribution": {
             "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "total_minutes": {
-            "type": "integer"
-          },
-          "rating": {
-            "type": [
-              "null",
-              "number"
-            ]
-          },
-          "rating_count": {
-            "type": "integer"
           },
           "calories": {
-            "type": [
-              "null",
-              "number"
-            ]
-          },
-          "protein_g": {
-            "type": [
-              "null",
-              "number"
-            ]
-          },
-          "fat_g": {
             "type": [
               "null",
               "number"
@@ -297,7 +822,22 @@
               "number"
             ]
           },
-          "sugar_g": {
+          "cook_minutes": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          },
+          "diets": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "fat_g": {
             "type": [
               "null",
               "number"
@@ -309,46 +849,92 @@
               "number"
             ]
           },
+          "id": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "image_url": {
+            "type": "string"
+          },
+          "ingredients": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "instructions": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "nutrition": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "nutrition_for": {
+            "type": "string"
+          },
+          "prep_minutes": {
+            "type": "integer"
+          },
+          "protein_g": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "rating": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "rating_count": {
+            "type": "integer"
+          },
+          "scale_class": {
+            "type": "string"
+          },
+          "scaled_from_servings": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "servings": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
           "source_site": {
             "type": "string"
           },
           "source_url": {
             "type": "string"
           },
-          "ingredients": {
+          "sugar_g": {
             "type": [
               "null",
-              "array"
-            ],
-            "items": {
-              "type": "string"
-            }
+              "number"
+            ]
           },
-          "instructions": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "type": "string"
-            }
+          "total_minutes": {
+            "type": "integer"
           },
           "yield": {
-            "type": "string"
-          },
-          "prep_minutes": {
-            "type": "integer"
-          },
-          "cook_minutes": {
-            "type": "integer"
-          },
-          "nutrition": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string"
-            }
-          },
-          "attribution": {
             "type": "string"
           }
         },
@@ -362,70 +948,311 @@
           "instructions",
           "attribution"
         ],
-        "additionalProperties": false
+        "type": "object"
       },
       "annotations": {
-        "title": "Get a recipe in full",
-        "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
-        "openWorldHint": false
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Get a recipe in full"
+      }
+    },
+    {
+      "name": "import_cookidoo_recipe",
+      "title": "Import a Cookidoo recipe",
+      "description": "Copy one Cookidoo recipe into the user's private ask.recipes collection, so the agent can read it in full, adapt it, build a shopping list, or compare it with other recipes. Imported recipes are visible only to this user and cannot be shared. Importing the same recipe again refreshes the copy.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cookidoo_id": {
+            "description": "Cookidoo recipe id such as r123456 or a created-recipe id, from search_cookidoo, list_cookidoo_recipes or the recipe's Cookidoo URL",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cookidoo_id"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "attribution": {
+            "type": "string"
+          },
+          "calories": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "carbs_g": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "cook_minutes": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          },
+          "diets": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "fat_g": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "fiber_g": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "id": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "image_url": {
+            "type": "string"
+          },
+          "ingredients": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "instructions": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "nutrition": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "nutrition_for": {
+            "type": "string"
+          },
+          "prep_minutes": {
+            "type": "integer"
+          },
+          "protein_g": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "rating": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "rating_count": {
+            "type": "integer"
+          },
+          "scale_class": {
+            "type": "string"
+          },
+          "scaled_from_servings": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "servings": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "source_site": {
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "sugar_g": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "total_minutes": {
+            "type": "integer"
+          },
+          "yield": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "rating_count",
+          "source_site",
+          "source_url",
+          "ingredients",
+          "instructions",
+          "attribution"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Import a Cookidoo recipe"
+      }
+    },
+    {
+      "name": "list_cookbooks",
+      "title": "List cookbooks",
+      "description": "List the user's cookbooks with how many recipes each holds, for \"what cookbooks do I have\", or before saving when the user says \"the usual one\". Every user has a default cookbook; the others are named by the user, e.g. Stews, BBQ, Christmas.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "cookbooks": {
+            "items": {
+              "properties": {
+                "default": {
+                  "type": "boolean"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "id": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "recipe_count": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "recipe_count"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "required": [
+          "cookbooks"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "List cookbooks"
+      }
+    },
+    {
+      "name": "list_cookidoo_recipes",
+      "title": "List the user's own Cookidoo recipes",
+      "description": "List the recipes the user created on Cookidoo, including ones sent there by send_to_thermomix, for \"what is on my Bimby\", \"my Thermomix recipes\", \"read recipes from my Cookidoo\". This is the Bimby side; list_saved is the ask.recipes side. Returns Cookidoo ids to pass to import_cookidoo_recipe. Names and links only until the user imports one.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "recipes": {
+            "items": {
+              "properties": {
+                "cookidoo_id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "cookidoo_id",
+                "name",
+                "url"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "required": [
+          "recipes"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "List the user's own Cookidoo recipes"
       }
     },
     {
       "name": "list_saved",
       "title": "List saved recipes",
-      "description": "List the user's saved recipes, for \"my recipes\", \"what did I save\", \"the one I kept last week\".",
+      "description": "List the recipes the user saved in ask.recipes, for \"my recipes\", \"what did I save\", \"what's in my Stews cookbook\". Each recipe lists the cookbooks it is in and the user's note; pass cookbook to see one cookbook only. Each also carries when it was last cooked and how many times, when mark_cooked recorded it. Not the Thermomix / Bimby / Cookidoo side; that is list_cookidoo_recipes.",
       "inputSchema": {
-        "type": "object",
-        "additionalProperties": false
+        "additionalProperties": false,
+        "properties": {
+          "cookbook": {
+            "description": "only recipes in this cookbook, by name; leave empty for every saved recipe, each listed with the cookbooks it is in",
+            "type": "string"
+          }
+        },
+        "type": "object"
       },
       "outputSchema": {
-        "type": "object",
         "properties": {
           "recipes": {
-            "type": [
-              "null",
-              "array"
-            ],
             "items": {
-              "type": "object",
               "properties": {
-                "id": {
-                  "type": "integer",
-                  "minimum": 0
-                },
-                "name": {
-                  "type": "string"
-                },
-                "description": {
-                  "type": "string"
-                },
-                "total_minutes": {
-                  "type": "integer"
-                },
-                "rating": {
-                  "type": [
-                    "null",
-                    "number"
-                  ]
-                },
-                "rating_count": {
-                  "type": "integer"
-                },
                 "calories": {
-                  "type": [
-                    "null",
-                    "number"
-                  ]
-                },
-                "protein_g": {
-                  "type": [
-                    "null",
-                    "number"
-                  ]
-                },
-                "fat_g": {
                   "type": [
                     "null",
                     "number"
@@ -437,7 +1264,39 @@
                     "number"
                   ]
                 },
-                "sugar_g": {
+                "cookbooks": {
+                  "items": {
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "note": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ],
+                    "type": "object"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "diets": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "fat_g": {
                   "type": [
                     "null",
                     "number"
@@ -449,11 +1308,60 @@
                     "number"
                   ]
                 },
+                "id": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "last_cooked": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "nutrition_for": {
+                  "type": "string"
+                },
+                "protein_g": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "rating": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "rating_count": {
+                  "type": "integer"
+                },
+                "scale_class": {
+                  "type": "string"
+                },
+                "servings": {
+                  "type": [
+                    "null",
+                    "integer"
+                  ]
+                },
                 "source_site": {
                   "type": "string"
                 },
                 "source_url": {
                   "type": "string"
+                },
+                "sugar_g": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "times_cooked": {
+                  "type": "integer"
+                },
+                "total_minutes": {
+                  "type": "integer"
                 }
               },
               "required": [
@@ -461,179 +1369,486 @@
                 "name",
                 "rating_count",
                 "source_site",
-                "source_url"
+                "source_url",
+                "cookbooks"
               ],
-              "additionalProperties": false
-            }
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
           }
         },
         "required": [
           "recipes"
         ],
-        "additionalProperties": false
+        "type": "object"
       },
       "annotations": {
-        "title": "List saved recipes",
-        "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
-        "openWorldHint": false
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "List saved recipes"
+      }
+    },
+    {
+      "name": "mark_cooked",
+      "title": "Mark a recipe as cooked",
+      "description": "Record that the user cooked a recipe, for \"we made that tonight\", \"cooked the curry yesterday\", \"the lasagna was a hit\". One entry per time it was cooked, with the day and an optional note on how it went. Pass date when the user names a day other than today. The recipe need not be saved. Returns the entry plus how many times and when this recipe was last cooked.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "description": "the day it was cooked as YYYY-MM-DD in the user's calendar, e.g. yesterday's date for 'we made it last night'; empty means today",
+            "type": "string"
+          },
+          "id": {
+            "description": "recipe id that was cooked",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "note": {
+            "description": "what the user said about how it went, e.g. 'kids loved it, double the sauce next time'; at most 200 characters",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "entry": {
+            "properties": {
+              "cooked_on": {
+                "type": "string"
+              },
+              "id": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "note": {
+                "type": "string"
+              },
+              "recipe": {
+                "properties": {
+                  "calories": {
+                    "type": [
+                      "null",
+                      "number"
+                    ]
+                  },
+                  "carbs_g": {
+                    "type": [
+                      "null",
+                      "number"
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "diets": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "fat_g": {
+                    "type": [
+                      "null",
+                      "number"
+                    ]
+                  },
+                  "fiber_g": {
+                    "type": [
+                      "null",
+                      "number"
+                    ]
+                  },
+                  "id": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "nutrition_for": {
+                    "type": "string"
+                  },
+                  "protein_g": {
+                    "type": [
+                      "null",
+                      "number"
+                    ]
+                  },
+                  "rating": {
+                    "type": [
+                      "null",
+                      "number"
+                    ]
+                  },
+                  "rating_count": {
+                    "type": "integer"
+                  },
+                  "scale_class": {
+                    "type": "string"
+                  },
+                  "servings": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "source_site": {
+                    "type": "string"
+                  },
+                  "source_url": {
+                    "type": "string"
+                  },
+                  "sugar_g": {
+                    "type": [
+                      "null",
+                      "number"
+                    ]
+                  },
+                  "total_minutes": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "rating_count",
+                  "source_site",
+                  "source_url"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "cooked_on",
+              "recipe"
+            ],
+            "type": "object"
+          },
+          "last_cooked": {
+            "type": "string"
+          },
+          "times_cooked": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entry"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Mark a recipe as cooked"
+      }
+    },
+    {
+      "name": "remove_from_pantry",
+      "title": "Remove from the pantry",
+      "description": "Take items out of the pantry for \"used the last onions\", \"we're out of milk\", or empty it with all=true when the user lists what is in the kitchen now, then add_to_pantry. Names are matched loosely. Returns the whole pantry after the change.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "all": {
+            "description": "true to empty the pantry, for 'here is what's in my kitchen now' before add_to_pantry",
+            "type": "boolean"
+          },
+          "remove": {
+            "description": "item names to take out, for 'used the last onions', 'we're out of milk'",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "items": {
+            "items": {
+              "properties": {
+                "name": {
+                  "description": "ingredient name, e.g. 'eggs' or 'basmati rice'",
+                  "type": "string"
+                },
+                "quantity": {
+                  "description": "optional amount in the user's words, e.g. '6', '500 g', 'half a bag'",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Remove from the pantry"
       }
     },
     {
       "name": "save_recipe",
       "title": "Save a recipe",
-      "description": "Save a recipe to the user's collection, for \"save that one\", \"keep this\", \"add it to my recipes\". Saving the same recipe twice has no further effect.",
+      "description": "Save a recipe to one of the user's cookbooks, for \"save that one\", \"keep this\", \"put it in my BBQ cookbook\". Pass cookbook when the user names one; it is created on first use. Without one the recipe goes to the default cookbook. A recipe can sit in several cookbooks; saving it again to the same one only updates the note.",
       "inputSchema": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
+          "cookbook": {
+            "description": "cookbook to save into, by name, e.g. 'Stews' or 'Christmas'; created when it does not exist yet; leave empty for the default cookbook",
+            "type": "string"
+          },
           "id": {
-            "type": "integer",
             "description": "recipe id to save",
-            "minimum": 0
+            "minimum": 0,
+            "type": "integer"
+          },
+          "note": {
+            "description": "the user's own note on this recipe in this cookbook, e.g. 'half the chilli, kids loved it'",
+            "type": "string"
           }
         },
         "required": [
           "id"
         ],
-        "additionalProperties": false
+        "type": "object"
       },
       "outputSchema": {
-        "type": "object",
         "properties": {
-          "saved": {
-            "type": "boolean"
+          "cookbook": {
+            "type": "string"
           },
           "id": {
-            "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "type": "integer"
+          },
+          "saved": {
+            "type": "boolean"
           }
         },
         "required": [
           "saved",
-          "id"
+          "id",
+          "cookbook"
         ],
-        "additionalProperties": false
+        "type": "object"
       },
       "annotations": {
-        "title": "Save a recipe",
-        "readOnlyHint": false,
         "destructiveHint": false,
         "idempotentHint": true,
-        "openWorldHint": false
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Save a recipe"
       }
     },
     {
-      "name": "search_recipes",
-      "title": "Search recipes",
-      "description": "Search human-rated recipes for a what-to-cook or what-to-eat question: dinner tonight, cooking for guests, a quick weeknight meal, a protein or calorie target. Every result links to its source. Filters by time, rating, review count and nutrition (calories, protein, fat, carbs, sugar, fiber; per-serving values as reported by the source). Recipes without nutrition data are excluded when a nutrition filter is set. Defaults to >=4.2 stars and >=25 ratings; pass min_rating=-1 or min_reviews=-1 to disable a filter.",
+      "name": "search_cookidoo",
+      "title": "Search the user's Cookidoo",
+      "description": "Search Cookidoo's catalogue of Thermomix recipes through the user's connected account, for \"find a Bimby recipe for\", \"what does Cookidoo have for\", \"search my Bimby for\". For the user's own recipes use list_cookidoo_recipes. Returns Cookidoo ids to pass to import_cookidoo_recipe. Cookidoo recipes are the user's subscription content: never quote them beyond name and link unless the user imports them.",
       "inputSchema": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
-          "query": {
-            "type": "string",
-            "description": "the dish or main ingredients, e.g. 'overnight oats' or 'chicken curry'; express time, rating and nutrition limits with the filters rather than in words"
-          },
-          "max_total_minutes": {
-            "type": "integer",
-            "description": "only recipes taking at most this many minutes total"
-          },
-          "min_rating": {
-            "type": "number",
-            "description": "minimum source star rating, default 4.2; pass a lower value to loosen"
-          },
-          "min_reviews": {
-            "type": "integer",
-            "description": "minimum number of source ratings, default 25; pass a lower value to loosen"
-          },
-          "site": {
-            "type": "string",
-            "description": "restrict to one source site slug, e.g. budgetbytes"
-          },
           "limit": {
-            "type": "integer",
-            "description": "max results, default 10, max 50"
+            "description": "max results, default 10, max 50",
+            "type": "integer"
           },
-          "min_calories": {
-            "type": "number",
-            "description": "only recipes with at least this many calories per serving"
-          },
-          "max_calories": {
-            "type": "number",
-            "description": "only recipes with at most this many calories per serving, e.g. 300"
-          },
-          "min_protein_g": {
-            "type": "number",
-            "description": "minimum grams of protein per serving, e.g. 10"
-          },
-          "max_fat_g": {
-            "type": "number",
-            "description": "maximum grams of fat per serving"
-          },
-          "max_carbs_g": {
-            "type": "number",
-            "description": "maximum grams of carbohydrates per serving"
-          },
-          "max_sugar_g": {
-            "type": "number",
-            "description": "maximum grams of sugar per serving"
-          },
-          "min_fiber_g": {
-            "type": "number",
-            "description": "minimum grams of fiber per serving"
+          "query": {
+            "description": "dish or ingredients to look for in Cookidoo's own recipes, in the user's Cookidoo language",
+            "type": "string"
           }
         },
         "required": [
           "query"
         ],
-        "additionalProperties": false
+        "type": "object"
       },
       "outputSchema": {
-        "type": "object",
         "properties": {
-          "recipes": {
-            "type": [
-              "null",
-              "array"
-            ],
+          "hits": {
             "items": {
-              "type": "object",
               "properties": {
-                "id": {
-                  "type": "integer",
-                  "minimum": 0
+                "cookidoo_id": {
+                  "type": "string"
                 },
                 "name": {
                   "type": "string"
                 },
-                "description": {
+                "url": {
                   "type": "string"
-                },
-                "total_minutes": {
-                  "type": "integer"
-                },
-                "rating": {
-                  "type": [
-                    "null",
-                    "number"
-                  ]
-                },
-                "rating_count": {
-                  "type": "integer"
-                },
+                }
+              },
+              "required": [
+                "cookidoo_id",
+                "name",
+                "url"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hits",
+          "total"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Search the user's Cookidoo"
+      }
+    },
+    {
+      "name": "search_recipes",
+      "title": "Search recipes",
+      "description": "Search human-rated recipes for a what-to-cook or what-to-eat question: dinner tonight, cooking for guests, a quick weeknight meal, a protein or calorie target, macros for a cut or a bulk, meal prep for the week. Every result links to its source. Filters by time, rating, review count, diet (vegetarian, vegan, gluten_free, dairy_free, nut_free, judged from the ingredient list) and nutrition (calories, protein, fat, carbs, sugar, fiber per serving as reported by the source). A nutrition filter only returns recipes whose yield is stated in servings, so the numbers are per serving; recipes without nutrition data are excluded. Results rank by how many people rated them; min_rating and min_reviews cut below a threshold only when passed. exclude_ingredients leaves out recipes using any of the ingredients named, for building a week without repeats. The user's profile, when they set one in the app, applies on top: allergens and dislikes are always excluded, its diets are always on, and its time budget is the default when max_total_minutes is not passed; pass max_total_minutes=-1 to lift it.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_friendly": {
+            "description": "true to leave out dishes cooked per portion, for a crowd; recipes not yet classified stay in",
+            "type": "boolean"
+          },
+          "dairy_free": {
+            "description": "only recipes without milk, butter, cheese, cream or yogurt",
+            "type": "boolean"
+          },
+          "exclude_ingredients": {
+            "description": "ingredients to leave out for this search, whole-word match on the ingredient list, e.g. ['chicken','brussels sprouts'] to avoid repeating what the week already has; nuts, gluten and dairy as a word apply the matching diet filter; the profile's allergens and dislikes stay excluded on top",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "feeding": {
+            "description": "how many people are eating, e.g. 10 for a dinner party; from six up, dishes cooked in one vessel (stews, braises, tray bakes, casseroles, soups, roasts) rank ahead of dishes cooked per portion (steaks, burgers, pancakes, stir-fries); nothing is excluded",
+            "type": "integer"
+          },
+          "gluten_free": {
+            "description": "only recipes without wheat, barley, rye, oats or products made from them",
+            "type": "boolean"
+          },
+          "limit": {
+            "description": "max results, default 10, max 50",
+            "type": "integer"
+          },
+          "max_calories": {
+            "description": "only recipes with at most this many calories per serving, e.g. 300",
+            "type": "number"
+          },
+          "max_carbs_g": {
+            "description": "maximum grams of carbohydrates per serving",
+            "type": "number"
+          },
+          "max_fat_g": {
+            "description": "maximum grams of fat per serving",
+            "type": "number"
+          },
+          "max_sugar_g": {
+            "description": "maximum grams of sugar per serving",
+            "type": "number"
+          },
+          "max_total_minutes": {
+            "description": "only recipes taking at most this many minutes total",
+            "type": "integer"
+          },
+          "min_calories": {
+            "description": "only recipes with at least this many calories per serving",
+            "type": "number"
+          },
+          "min_fiber_g": {
+            "description": "minimum grams of fiber per serving",
+            "type": "number"
+          },
+          "min_protein_g": {
+            "description": "minimum grams of protein per serving, e.g. 10",
+            "type": "number"
+          },
+          "min_rating": {
+            "description": "only recipes the source rates at least this many stars, e.g. 4.5; off unless passed",
+            "type": "number"
+          },
+          "min_reviews": {
+            "description": "only recipes with at least this many source ratings, e.g. 25; off unless passed",
+            "type": "integer"
+          },
+          "nut_free": {
+            "description": "only recipes without tree nuts or peanuts; coconut counts as nut-free",
+            "type": "boolean"
+          },
+          "query": {
+            "description": "the dish or main ingredients, e.g. 'overnight oats' or 'chicken curry'; express time, rating and nutrition limits with the filters rather than in words",
+            "type": "string"
+          },
+          "site": {
+            "description": "restrict to one source site slug, e.g. budgetbytes",
+            "type": "string"
+          },
+          "vegan": {
+            "description": "only vegan recipes: vegetarian and no eggs, dairy or honey",
+            "type": "boolean"
+          },
+          "vegetarian": {
+            "description": "only vegetarian recipes: no meat, poultry, fish, seafood or gelatin in the ingredients",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "recipes": {
+            "items": {
+              "properties": {
                 "calories": {
-                  "type": [
-                    "null",
-                    "number"
-                  ]
-                },
-                "protein_g": {
-                  "type": [
-                    "null",
-                    "number"
-                  ]
-                },
-                "fat_g": {
                   "type": [
                     "null",
                     "number"
@@ -645,7 +1860,19 @@
                     "number"
                   ]
                 },
-                "sugar_g": {
+                "description": {
+                  "type": "string"
+                },
+                "diets": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "fat_g": {
                   "type": [
                     "null",
                     "number"
@@ -657,11 +1884,54 @@
                     "number"
                   ]
                 },
+                "id": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "nutrition_for": {
+                  "type": "string"
+                },
+                "protein_g": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "rating": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "rating_count": {
+                  "type": "integer"
+                },
+                "scale_class": {
+                  "type": "string"
+                },
+                "servings": {
+                  "type": [
+                    "null",
+                    "integer"
+                  ]
+                },
                 "source_site": {
                   "type": "string"
                 },
                 "source_url": {
                   "type": "string"
+                },
+                "sugar_g": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "total_minutes": {
+                  "type": "integer"
                 }
               },
               "required": [
@@ -671,48 +1941,164 @@
                 "source_site",
                 "source_url"
               ],
-              "additionalProperties": false
-            }
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
           }
         },
         "required": [
           "recipes"
         ],
-        "additionalProperties": false
+        "type": "object"
       },
       "annotations": {
-        "title": "Search recipes",
-        "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
-        "openWorldHint": false
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Search recipes"
       }
     },
     {
-      "name": "share_recipe",
-      "title": "Create a share link",
-      "description": "Create a share link for one of the user's uploaded recipes, for \"send this to my wife\", \"share it with Tom\", \"give me a link\". Returns a share.ask.recipes URL that opens without an account and is not listed or indexed; the page credits the recipe's original source. Only recipes the user uploaded can be shared; for other recipes the source link is the thing to share.",
+      "name": "send_to_thermomix",
+      "title": "Send a recipe to the Thermomix",
+      "description": "Send one recipe to the user's Cookidoo account as a private created recipe, so it shows on their Thermomix / Bimby with guided cooking. For \"send this to my Thermomix\", \"put it on my Bimby\", \"cook this on the TM6\". First get_recipe, then rewrite the recipe for the Cookidoo account: name, ingredients and steps in the account's language (connect_cookidoo returns it), amounts in grams and millilitres since the Thermomix weighs everything, steps as Thermomix steps with time, temperature, speed, direction or mode. Pass name, ingredients and steps; show the user the rewritten steps before sending. Each call creates a new Cookidoo recipe. Thermomix step settings, for rewriting a recipe before send_to_thermomix: each step is one action with at most one setting block. Times are seconds. Chop: 5-10 s / speed 5-7. Sauté onion and garlic: 3-5 min / 120 °C / speed 1. Simmer sauces and soups: 15-25 min / 100 °C / speed 1, with direction CCW when pieces must stay whole. Blend soup: 1 min / speed 10. Whip cream: speed 3.5 with the butterfly, write that in the text. Melt chocolate: 50 °C / speed 2. Knead bread: mode dough for 2-3 min. Steam: mode steaming, or varoma temperature with the Varoma dish. Rice: mode rice_cooker. Modes depend on the model connect_cookidoo reports: a TM31 has none, a TM5 only dough and turbo, TM6 and TM7 all of them; on an older model write the step with time, temperature and speed instead, and the server refuses a mode the machine lacks. Keep the ingredient amounts in the step text so the screen shows them. Steps without settings are fine for prep done outside the machine.",
       "inputSchema": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
+          "hints": {
+            "description": "optional tips shown under the recipe on Cookidoo",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
           "id": {
-            "type": "integer",
-            "description": "id of a recipe the user uploaded",
-            "minimum": 0
+            "description": "recipe id from a search, get_recipe, list_saved or upload",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ingredients": {
+            "description": "one ingredient per entry in the account's language with metric amounts in g or ml, e.g. '200 g cebola, em pedaços'; the stored list is sent verbatim when omitted",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "machine": {
+            "description": "TM31, TM5, TM6 or TM7, only when the user names a paired machine other than the connected one",
+            "type": "string"
+          },
+          "name": {
+            "description": "recipe name in the Cookidoo account's language; the stored name is used when omitted",
+            "type": "string"
+          },
+          "steps": {
+            "description": "the recipe rewritten as Thermomix steps with settings, in the account's language; when omitted the recipe's plain steps are sent without settings",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "direction": {
+                  "description": "CCW for reverse blade (keeps pieces whole: stews, rice, fish); omit for normal",
+                  "type": "string"
+                },
+                "mode": {
+                  "description": "guided mode instead of manual settings: dough, browning, turbo, steaming, blend, warm_up, rice_cooker",
+                  "type": "string"
+                },
+                "speed": {
+                  "description": "one of soft 0.5 1 1.5 2 2.5 3 3.5 4 4.5 5 5.5 6 6.5 7 7.5 8 8.5 9 9.5 10; soft is the gentle stirring speed",
+                  "type": "string"
+                },
+                "temperature": {
+                  "description": "one of 37 40 45 50 55 60 65 70 75 80 85 90 95 98 100 105 110 115 120 or varoma; omit for no heat",
+                  "type": "string"
+                },
+                "text": {
+                  "description": "the step as the cook reads it on the Thermomix screen; one action per step. Settings are appended as a Cookidoo label such as 5 min/100°C/vel 1, so leave them out of the text",
+                  "type": "string"
+                },
+                "time_seconds": {
+                  "description": "run time in seconds for this step, e.g. 300 for 5 min",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
           }
         },
         "required": [
           "id"
         ],
-        "additionalProperties": false
+        "type": "object"
       },
       "outputSchema": {
-        "type": "object",
         "properties": {
-          "url": {
+          "cookidoo_id": {
             "type": "string"
           },
           "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cookidoo_id",
+          "url",
+          "name"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Send a recipe to the Thermomix"
+      }
+    },
+    {
+      "name": "share_recipe",
+      "title": "Create a share link",
+      "description": "Create a share link for one of the user's uploaded recipes, for \"send this to my wife\", \"share it with Tom\", \"give me a link\", \"add this to MacroFactor\". Returns a share.ask.recipes URL that opens without an account and is not listed or indexed; the page credits the recipe's original source and carries schema.org Recipe markup, so apps that import a recipe from a link can read it. Only recipes the user uploaded can be shared; for other recipes the source link is the thing to share.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "id of a recipe the user uploaded",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
             "type": "string"
           }
         },
@@ -720,14 +2106,122 @@
           "url",
           "name"
         ],
-        "additionalProperties": false
+        "type": "object"
       },
       "annotations": {
-        "title": "Create a share link",
-        "readOnlyHint": false,
         "destructiveHint": false,
         "idempotentHint": false,
-        "openWorldHint": false
+        "openWorldHint": true,
+        "readOnlyHint": false,
+        "title": "Create a share link"
+      }
+    },
+    {
+      "name": "unsave_recipe",
+      "title": "Remove a saved recipe",
+      "description": "Take a recipe out of the user's cookbooks, for \"remove that from my saved\", \"take it out of Christmas\". With cookbook set it leaves only that cookbook; without it the recipe is removed from every cookbook. The recipe itself stays searchable.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cookbook": {
+            "description": "take it out of this cookbook only; leave empty to remove it from every cookbook",
+            "type": "string"
+          },
+          "id": {
+            "description": "recipe id to take out",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "cookbook": {
+            "type": "string"
+          },
+          "id": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "removed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "removed",
+          "id"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Remove a saved recipe"
+      }
+    },
+    {
+      "name": "update_cookbook",
+      "title": "Rename or describe a cookbook",
+      "description": "Rename a cookbook or change its description, for \"call it Sunday Roasts instead\". Recipes stay where they are.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cookbook": {
+            "description": "current name of the cookbook to change",
+            "type": "string"
+          },
+          "description": {
+            "description": "new description; leave empty to keep it",
+            "type": "string"
+          },
+          "name": {
+            "description": "new name; leave empty to keep it",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cookbook"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "default": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "recipe_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "recipe_count"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Rename or describe a cookbook"
       }
     },
     {
@@ -735,58 +2229,57 @@
       "title": "Upload a private recipe",
       "description": "Add a recipe the user supplies themselves: pasted in, dictated, a family recipe they want kept, or a web page they point at. For a web page, pass the page's raw HTML or its JSON-LD as markup together with source_url; the server extracts the facts. Each call creates a new private recipe, visible only to this user in searches and saves.",
       "inputSchema": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
-          "name": {
-            "type": "string",
-            "description": "recipe name; may be left empty when markup carries the recipe"
-          },
           "description": {
             "type": "string"
           },
           "ingredients": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "description": "one ingredient per entry, with quantities, e.g. '2 cups rolled oats'",
             "items": {
               "type": "string"
             },
-            "description": "one ingredient per entry, with quantities, e.g. '2 cups rolled oats'"
+            "type": [
+              "null",
+              "array"
+            ]
           },
           "instructions": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "description": "one step per entry",
             "items": {
               "type": "string"
             },
-            "description": "one step per entry"
+            "type": [
+              "null",
+              "array"
+            ]
           },
-          "yield": {
+          "markup": {
+            "description": "for a recipe from a web page: the page's raw HTML, or just its schema.org/Recipe JSON-LD block, as fetched by the agent; the server extracts name, ingredients, steps, times, nutrition and rating from it, so the other fields can stay empty",
+            "type": "string"
+          },
+          "name": {
+            "description": "recipe name; may be left empty when markup carries the recipe",
+            "type": "string"
+          },
+          "source_url": {
+            "description": "the web page the recipe came from, if any; kept as attribution on the private copy",
             "type": "string"
           },
           "total_minutes": {
             "type": "integer"
           },
-          "source_url": {
-            "type": "string",
-            "description": "the web page the recipe came from, if any; kept as attribution on the private copy"
-          },
-          "markup": {
-            "type": "string",
-            "description": "for a recipe from a web page: the page's raw HTML, or just its schema.org/Recipe JSON-LD block, as fetched by the agent; the server extracts name, ingredients, steps, times, nutrition and rating from it, so the other fields can stay empty"
+          "yield": {
+            "type": "string"
           }
         },
-        "additionalProperties": false
+        "type": "object"
       },
       "outputSchema": {
-        "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "type": "integer"
           },
           "name": {
             "type": "string"
@@ -796,18 +2289,18 @@
           "id",
           "name"
         ],
-        "additionalProperties": false
+        "type": "object"
       },
       "annotations": {
-        "title": "Upload a private recipe",
-        "readOnlyHint": false,
         "destructiveHint": false,
         "idempotentHint": false,
-        "openWorldHint": false
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Upload a private recipe"
       }
     }
   ],
-  "version": "1.1.0",
+  "version": "1.2.0",
   "icon": "https://ask.recipes/icon-512.png",
   "tags": [
     "recipes",
