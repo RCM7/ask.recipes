@@ -18,7 +18,7 @@ Works with Claude, ChatGPT, Claude Code, Cursor and any MCP client that speaks s
 
 **ChatGPT**: open the [ask.recipes app page](https://chatgpt.com/plugins/plugin_asdk_app_6ad7e6161a3881918bd701a6a39bb49c) and add it. Manual route: Settings → Connectors → Advanced → Developer mode → add the URL, OAuth as the authentication.
 
-**Claude** (web, desktop, mobile): Settings → Connectors → Add custom connector → paste the URL above. Enable it in a conversation and sign in when asked.
+**Claude** (web, desktop, mobile): open the [ask.recipes listing in the Claude directory](https://claude.ai/directory/ask-recipes) and connect it, sign in when asked. Manual route: Settings → Customize → Connectors → Add custom connector → paste the URL above.
 
 **Claude Code**
 
