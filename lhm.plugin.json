@@ -14,8 +14,7 @@
       "arguments": [
         {
           "name": "ingredients",
-          "description": "What is in the fridge or pantry, comma separated.",
-          "required": true
+          "description": "What is in the fridge or pantry, comma separated. Leave empty to use the saved pantry."
         },
         {
           "name": "minutes",
@@ -39,6 +38,55 @@
         {
           "name": "diet",
           "description": "Any constraint: vegetarian, vegan, gluten-free, dairy-free, nut-free."
+        }
+      ]
+    },
+    {
+      "name": "plan_my_week",
+      "title": "Plan my week",
+      "description": "Plan a week of dinners from who is eating, which nights you cook and rules like three vegetarian, one chicken, one fish, without repeating recent dinners.",
+      "arguments": [
+        {
+          "name": "people",
+          "description": "Who is eating, e.g. 2 adults and 3 children."
+        },
+        {
+          "name": "nights",
+          "description": "Which nights to plan, e.g. Monday to Friday."
+        },
+        {
+          "name": "rules",
+          "description": "What the week should include, e.g. 3 vegetarian, 1 chicken, 1 fish, no Brussels sprouts."
+        },
+        {
+          "name": "minutes",
+          "description": "Most time per dinner, total."
+        }
+      ]
+    },
+    {
+      "name": "set_up_my_kitchen",
+      "title": "Set up my kitchen",
+      "description": "Answer a few questions once about who eats at home, allergies, dislikes, favourites, diets, weeknight time and units, and every search from then on respects them.",
+      "arguments": [
+        {
+          "name": "about",
+          "description": "Anything you already want to say about how your household eats. Leave empty to be asked."
+        }
+      ]
+    },
+    {
+      "name": "shopping_list",
+      "title": "Shopping list",
+      "description": "One shopping list for several recipes or this week's plan, scaled to how many are eating, shared ingredients added up, pantry crossed off.",
+      "arguments": [
+        {
+          "name": "recipes",
+          "description": "Which recipes, by name. Leave empty for the recipes in this chat or this week's plan."
+        },
+        {
+          "name": "people",
+          "description": "How many are eating."
         }
       ]
     }
@@ -221,6 +269,9 @@
           "entries": {
             "items": {
               "properties": {
+                "cooked_by": {
+                  "type": "string"
+                },
                 "cooked_on": {
                   "type": "string"
                 },
@@ -233,6 +284,9 @@
                 },
                 "recipe": {
                   "properties": {
+                    "askrecipes_ratings": {
+                      "type": "integer"
+                    },
                     "calories": {
                       "type": [
                         "null",
@@ -272,6 +326,26 @@
                     "id": {
                       "minimum": 0,
                       "type": "integer"
+                    },
+                    "main_protein": {
+                      "type": "string"
+                    },
+                    "my_rating": {
+                      "properties": {
+                        "note": {
+                          "type": "string"
+                        },
+                        "stars": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "stars"
+                      ],
+                      "type": [
+                        "null",
+                        "object"
+                      ]
                     },
                     "name": {
                       "type": "string"
@@ -358,7 +432,7 @@
     {
       "name": "create_cookbook",
       "title": "Create a cookbook",
-      "description": "Create an empty cookbook, for \"make me a BBQ cookbook\". Not needed before save_recipe, which creates a cookbook it does not know. Fails when a cookbook with that name exists already.",
+      "description": "Create an empty cookbook, for \"make me a BBQ cookbook\". Not needed before save_recipe, which creates a cookbook it does not know. Fails when a cookbook with that name exists already. shared=true makes it a household cookbook, visible to everyone in the user's household.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -369,6 +443,10 @@
           "name": {
             "description": "cookbook name, e.g. 'BBQ', 'Weeknight', 'Christmas'",
             "type": "string"
+          },
+          "shared": {
+            "description": "true to make it a household cookbook that everyone in the user's household sees and saves into, for 'a cookbook for the whole family'; needs a household",
+            "type": "boolean"
           }
         },
         "required": [
@@ -393,6 +471,9 @@
           },
           "recipe_count": {
             "type": "integer"
+          },
+          "shared": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -480,7 +561,7 @@
     {
       "name": "find_by_ingredients",
       "title": "Find recipes by ingredients on hand",
-      "description": "Find recipes that use ingredients the user already has: leftovers, a full fridge, an ingredient about to turn. Ranks by how many of those ingredients a recipe uses and how few extra ones it needs. The user's pantry counts as on hand too, so a recipe that only needs pantry staples on top of what was passed ranks as nearly complete; with no ingredients passed it cooks from the pantry alone, for \"what can I make with what I have\". Takes the same diet, nutrition and exclude_ingredients filters as search_recipes. Each result links to its source. The user's profile, when set in the app, excludes allergens and dislikes, keeps its diets on and supplies the default time budget; pass max_total_minutes=-1 to lift it.",
+      "description": "Find recipes that use ingredients the user already has: leftovers, a full fridge, an ingredient about to turn. Ranks by how many of those ingredients a recipe uses and how few extra ones it needs. The user's pantry counts as on hand too, so a recipe that only needs pantry staples on top of what was passed ranks as nearly complete; with no ingredients passed it cooks from the pantry alone, for \"what can I make with what I have\"; when the pantry is empty too, ask_user carries the question to put to the user. Takes the same diet, nutrition and exclude_ingredients filters as search_recipes. Each result links to its source. The user's profile, once saved with update_profile, excludes allergens and dislikes, keeps its diets on and supplies the default time budget; pass max_total_minutes=-1 to lift it. who names the people eating, by name or role, when not everyone is. check, present when the profile has allergens, says to read a recipe's ingredients with get_recipe before recommending it, because a product name can hide an excluded ingredient.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -527,6 +608,16 @@
           "limit": {
             "type": "integer"
           },
+          "main_protein": {
+            "description": "only recipes whose main protein is one of these: chicken, turkey, duck, goose, quail, pheasant, guinea_fowl, beef (with veal), pork (with ham, bacon and sausage), lamb (with mutton), goat, venison, bison, rabbit, fish, shrimp (with prawns), seafood (other shellfish, squid, octopus), egg, legume (beans, lentils, chickpeas, tofu), none; e.g. ['beef','pork','lamb'] for red meat or ['fish','shrimp','seafood']; judged from the ingredients, so chicken stock alone does not make a chicken dish",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
           "max_calories": {
             "description": "only recipes with at most this many calories per serving, e.g. 300",
             "type": "number"
@@ -559,11 +650,11 @@
             "type": "number"
           },
           "min_rating": {
-            "description": "only recipes the source rates at least this many stars; off unless passed",
+            "description": "only recipes rated at least this many stars, source ratings and ask.recipes stars averaged together; recipes nobody has rated yet and private uploads stay in; off unless passed",
             "type": "number"
           },
           "min_reviews": {
-            "description": "only recipes with at least this many source ratings; off unless passed",
+            "description": "only recipes with at least this many ratings, source and ask.recipes together; recipes with no rating at all and private uploads stay in; off unless passed",
             "type": "integer"
           },
           "nut_free": {
@@ -581,12 +672,28 @@
           "vegetarian": {
             "description": "only vegetarian recipes: no meat, poultry, fish, seafood or gelatin in the ingredients",
             "type": "boolean"
+          },
+          "who": {
+            "description": "who is eating, by the names or roles saved as people on the profile, e.g. ['Dad','Ana'] or ['adults'] when the kids are out, ['kids'] when only they eat; only those people's allergens and dislikes apply on top of the household's; leave empty for everyone",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
           }
         },
         "type": "object"
       },
       "outputSchema": {
         "properties": {
+          "ask_user": {
+            "type": "string"
+          },
+          "check": {
+            "type": "string"
+          },
           "from_pantry": {
             "type": "boolean"
           },
@@ -602,6 +709,9 @@
           "matches": {
             "items": {
               "properties": {
+                "askrecipes_ratings": {
+                  "type": "integer"
+                },
                 "calories": {
                   "type": [
                     "null",
@@ -642,11 +752,31 @@
                   "minimum": 0,
                   "type": "integer"
                 },
+                "main_protein": {
+                  "type": "string"
+                },
                 "matched_ingredients": {
                   "type": "integer"
                 },
                 "matched_requested": {
                   "type": "integer"
+                },
+                "my_rating": {
+                  "properties": {
+                    "note": {
+                      "type": "string"
+                    },
+                    "stars": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "stars"
+                  ],
+                  "type": [
+                    "null",
+                    "object"
+                  ]
                 },
                 "name": {
                   "type": "string"
@@ -738,6 +868,69 @@
       }
     },
     {
+      "name": "get_household",
+      "title": "Who shares the kitchen",
+      "description": "Read the user's household: its name and who is in it, by the names they go by at home. Members share one pantry, one cooking diary and any cookbook marked shared, and each member's own allergens and dislikes apply when anyone in the household searches for everyone. in_household=false means the user shares a kitchen with nobody yet; invite_to_household starts one. For \"who's in my household\", \"is my partner connected\".",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "in_household": {
+            "description": "false when this account shares a kitchen with nobody yet",
+            "type": "boolean"
+          },
+          "members": {
+            "items": {
+              "properties": {
+                "creator": {
+                  "description": "the member who created the household; the only one who can remove others",
+                  "type": "boolean"
+                },
+                "joined_on": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "you": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "joined_on"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "in_household",
+          "members"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Who shares the kitchen"
+      }
+    },
+    {
       "name": "get_pantry",
       "title": "What is in the pantry",
       "description": "List what the user has told you is in their kitchen: pantry, fridge and freezer, with quantities when they gave one. For \"what do I have\", before suggesting a shopping list, or to check an ingredient before recommending a recipe. find_by_ingredients with no ingredients searches from this list directly.",
@@ -784,9 +977,232 @@
       }
     },
     {
+      "name": "get_profile",
+      "title": "How the household eats",
+      "description": "Read what is saved about how the user eats: how many are eating, allergens, dislikes, likes, diets, cuisines, the usual weeknight time budget, units, daily calorie or macro goals, and the people in the household, each with a role such as kid or adult and what applies to them alone. Household allergens and dislikes are excluded from every search; a person's apply whenever they are eating, which is everyone unless a search passes who. Diets stay on and the time budget is the default time limit, so you rarely need to pass them yourself; read likes and cuisines to steer suggestions. Call it before planning a week and when the user asks what you know about them. set=false means nothing is saved yet: offer the set_up_my_kitchen questions once.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "allergens": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "calories_per_day": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "carbs_g_per_day": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "cuisines": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "diets": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "dislikes": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "fat_g_per_day": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "household": {
+            "description": "present when the user shares a kitchen with other ask.recipes accounts; their allergens and dislikes apply to searches for everyone",
+            "properties": {
+              "in_household": {
+                "description": "false when this account shares a kitchen with nobody yet",
+                "type": "boolean"
+              },
+              "members": {
+                "items": {
+                  "properties": {
+                    "creator": {
+                      "description": "the member who created the household; the only one who can remove others",
+                      "type": "boolean"
+                    },
+                    "joined_on": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "you": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "joined_on"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "in_household",
+              "members"
+            ],
+            "type": [
+              "null",
+              "object"
+            ]
+          },
+          "household_size": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "likes": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "people": {
+            "items": {
+              "properties": {
+                "allergens": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "dislikes": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "likes": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "role",
+                "allergens",
+                "dislikes",
+                "likes"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "protein_g_per_day": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "set": {
+            "description": "false when nothing has been saved yet",
+            "type": "boolean"
+          },
+          "time_budget_minutes": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "units": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "set",
+          "diets",
+          "allergens",
+          "dislikes",
+          "likes",
+          "cuisines",
+          "people"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "How the household eats"
+      }
+    },
+    {
       "name": "get_recipe",
       "title": "Get a recipe in full",
-      "description": "Get one recipe in full: ingredients, step-by-step instructions, times, yield, nutrition and its source link. For when the user picks a recipe from a search or asks how to make it. Pass servings to scale the ingredient quantities, e.g. for meal prep or a crowd; nutrition_for says whether the nutrition numbers are per serving or for the whole yield.",
+      "description": "Get one recipe in full: ingredients, step-by-step instructions, times, yield, nutrition, rating (source ratings and ask.recipes stars averaged, with the user's own as my_rating) and its source link. For when the user picks a recipe from a search or asks how to make it. Pass servings to scale the ingredient quantities, e.g. for meal prep or a crowd; nutrition_for says whether the nutrition numbers are per serving or for the whole yield. Amounts come back in the units saved on the profile: metric turns cups and ounces into grams and millilitres (dry goods by weight, liquids by volume, spoons stay spoons) and oven temperatures and pan sizes in the steps into Celsius and centimetres; us does the reverse; units in the result says which applied, empty means as the source wrote it. Pass units to override for one call.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -796,8 +1212,12 @@
             "type": "integer"
           },
           "servings": {
-            "description": "scale ingredient quantities to this many servings; only works when the recipe's yield states servings, nutrition stays per serving",
+            "description": "scale ingredient quantities to this many servings; when the recipe's yield does not state servings the recipe comes back unscaled with scale_note saying so, nutrition stays per serving",
             "type": "integer"
+          },
+          "units": {
+            "description": "metric or us; converts the ingredient amounts and the temperatures and pan sizes in the steps; defaults to the units saved on the profile, leave empty unless the user asks for the other system this once",
+            "type": "string"
           }
         },
         "required": [
@@ -807,6 +1227,9 @@
       },
       "outputSchema": {
         "properties": {
+          "askrecipes_ratings": {
+            "type": "integer"
+          },
           "attribution": {
             "type": "string"
           },
@@ -874,6 +1297,26 @@
               "array"
             ]
           },
+          "main_protein": {
+            "type": "string"
+          },
+          "my_rating": {
+            "properties": {
+              "note": {
+                "type": "string"
+              },
+              "stars": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "stars"
+            ],
+            "type": [
+              "null",
+              "object"
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -904,7 +1347,19 @@
           "rating_count": {
             "type": "integer"
           },
+          "saved_in": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
           "scale_class": {
+            "type": "string"
+          },
+          "scale_note": {
             "type": "string"
           },
           "scaled_from_servings": {
@@ -933,6 +1388,9 @@
           },
           "total_minutes": {
             "type": "integer"
+          },
+          "units": {
+            "type": "string"
           },
           "yield": {
             "type": "string"
@@ -977,6 +1435,9 @@
       },
       "outputSchema": {
         "properties": {
+          "askrecipes_ratings": {
+            "type": "integer"
+          },
           "attribution": {
             "type": "string"
           },
@@ -1044,6 +1505,26 @@
               "array"
             ]
           },
+          "main_protein": {
+            "type": "string"
+          },
+          "my_rating": {
+            "properties": {
+              "note": {
+                "type": "string"
+              },
+              "stars": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "stars"
+            ],
+            "type": [
+              "null",
+              "object"
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -1074,7 +1555,19 @@
           "rating_count": {
             "type": "integer"
           },
+          "saved_in": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
           "scale_class": {
+            "type": "string"
+          },
+          "scale_note": {
             "type": "string"
           },
           "scaled_from_servings": {
@@ -1104,6 +1597,9 @@
           "total_minutes": {
             "type": "integer"
           },
+          "units": {
+            "type": "string"
+          },
           "yield": {
             "type": "string"
           }
@@ -1129,9 +1625,189 @@
       }
     },
     {
+      "name": "import_recipes",
+      "title": "Import a recipe app export",
+      "description": "Return a one-time link where the user drops the export file from their recipe app: Paprika (.paprikarecipes), Mela (.melarecipes), Crouton (.crumb) or a zip of recipe pages carrying schema.org Recipe markup. Every recipe becomes a private recipe visible only to this user, in a cookbook named after the file, with its photo; Paprika star ratings become my_rating, nutrition is estimated afterwards. For \"import my Paprika recipes\", \"bring my recipe collection over\", or whenever the user has more than a few recipes to add at once; upload_recipe stays the tool for a single recipe. Give the user the link as is; it works once and expires in an hour. Files up to 100 MB and 3000 recipes; bigger libraries go in by category, duplicates are skipped on a second upload. Then suggest list_saved with the new cookbook once they say it is done.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "expires_in_minutes": {
+            "type": "integer"
+          },
+          "formats": {
+            "description": "export files the page reads",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "how_to_export": {
+            "description": "where the export lives in each app",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "import_url": {
+            "description": "one-time page where the user drops the export file; works once, expires in an hour",
+            "type": "string"
+          }
+        },
+        "required": [
+          "import_url",
+          "expires_in_minutes",
+          "formats",
+          "how_to_export"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Import a recipe app export"
+      }
+    },
+    {
+      "name": "invite_to_household",
+      "title": "Invite someone to the household",
+      "description": "Create a one-time link that lets another ask.recipes user join the user's household, for \"add my wife to my household\", \"share my pantry with Sam\", \"connect my partner's account\". The first call creates the household, so pass my_name (what the family calls the user) and optionally household_name. The person opens the link, enters their name and email, confirms a 6-digit code and is in; an account is created for them when they have none. On joining, their pantry merges into the shared one and their cooking diary becomes the household's. Give the user the link as is to forward; it works once and expires in a day. Up to 6 members, and an account can be in one household at a time.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "household_name": {
+            "description": "a name for the household when creating it, e.g. 'Casa Silva' or 'Home'; defaults to Home",
+            "type": "string"
+          },
+          "my_name": {
+            "description": "what the household calls the user, e.g. 'Dad' or 'Ana'; required the first time, when the household is created, and shown to the person invited",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "expires_in_hours": {
+            "type": "integer"
+          },
+          "household": {
+            "properties": {
+              "in_household": {
+                "description": "false when this account shares a kitchen with nobody yet",
+                "type": "boolean"
+              },
+              "members": {
+                "items": {
+                  "properties": {
+                    "creator": {
+                      "description": "the member who created the household; the only one who can remove others",
+                      "type": "boolean"
+                    },
+                    "joined_on": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "you": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "joined_on"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "in_household",
+              "members"
+            ],
+            "type": "object"
+          },
+          "join_url": {
+            "description": "one-time link the user sends to the person joining; works once and expires in a day",
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "join_url",
+          "expires_in_hours",
+          "household",
+          "note"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Invite someone to the household"
+      }
+    },
+    {
+      "name": "leave_household",
+      "title": "Leave the household",
+      "description": "Take the user out of their household, for \"leave the household\", \"stop sharing my kitchen\". The shared pantry, diary entries and shared cookbooks stay with the household; the user starts again with an empty pantry and keeps their own diary entries. When the last member leaves, the household is gone. Confirm with the user before calling.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "left": {
+            "description": "name of the household the user left",
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "left",
+          "note"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Leave the household"
+      }
+    },
+    {
       "name": "list_cookbooks",
       "title": "List cookbooks",
-      "description": "List the user's cookbooks with how many recipes each holds, for \"what cookbooks do I have\", or before saving when the user says \"the usual one\". Every user has a default cookbook; the others are named by the user, e.g. Stews, BBQ, Christmas.",
+      "description": "List the user's cookbooks with how many recipes each holds, for \"what cookbooks do I have\", or before saving when the user says \"the usual one\". Every user has a default cookbook; the others are named by the user, e.g. Stews, BBQ, Christmas. Cookbooks shared with the household carry shared=true and appear for every member.",
       "inputSchema": {
         "additionalProperties": false,
         "type": "object"
@@ -1156,6 +1832,9 @@
                 },
                 "recipe_count": {
                   "type": "integer"
+                },
+                "shared": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -1252,6 +1931,9 @@
           "recipes": {
             "items": {
               "properties": {
+                "askrecipes_ratings": {
+                  "type": "integer"
+                },
                 "calories": {
                   "type": [
                     "null",
@@ -1314,6 +1996,26 @@
                 },
                 "last_cooked": {
                   "type": "string"
+                },
+                "main_protein": {
+                  "type": "string"
+                },
+                "my_rating": {
+                  "properties": {
+                    "note": {
+                      "type": "string"
+                    },
+                    "stars": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "stars"
+                  ],
+                  "type": [
+                    "null",
+                    "object"
+                  ]
                 },
                 "name": {
                   "type": "string"
@@ -1396,7 +2098,7 @@
     {
       "name": "mark_cooked",
       "title": "Mark a recipe as cooked",
-      "description": "Record that the user cooked a recipe, for \"we made that tonight\", \"cooked the curry yesterday\", \"the lasagna was a hit\". One entry per time it was cooked, with the day and an optional note on how it went. Pass date when the user names a day other than today. The recipe need not be saved. Returns the entry plus how many times and when this recipe was last cooked.",
+      "description": "Record that the user cooked a recipe, for \"we made that tonight\", \"cooked the curry yesterday\", \"the lasagna was a hit\". One entry per time it was cooked, with the day and an optional note on how it went. Pass date when the user names a day other than today. The recipe need not be saved. Pass rating when the user gave a verdict in stars or words, so the cook and the rating land in one call. Returns the entry plus how many times and when this recipe was last cooked.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1412,6 +2114,10 @@
           "note": {
             "description": "what the user said about how it went, e.g. 'kids loved it, double the sauce next time'; at most 200 characters",
             "type": "string"
+          },
+          "rating": {
+            "description": "the user's stars for the recipe, 1 to 5, when they gave a verdict: 'it was a hit' is 5, 'fine' is 3, 'never again' is 1; replaces their earlier rating of this recipe; leave out when they said nothing about how it was",
+            "type": "integer"
           }
         },
         "required": [
@@ -1423,6 +2129,9 @@
         "properties": {
           "entry": {
             "properties": {
+              "cooked_by": {
+                "type": "string"
+              },
               "cooked_on": {
                 "type": "string"
               },
@@ -1435,6 +2144,9 @@
               },
               "recipe": {
                 "properties": {
+                  "askrecipes_ratings": {
+                    "type": "integer"
+                  },
                   "calories": {
                     "type": [
                       "null",
@@ -1474,6 +2186,26 @@
                   "id": {
                     "minimum": 0,
                     "type": "integer"
+                  },
+                  "main_protein": {
+                    "type": "string"
+                  },
+                  "my_rating": {
+                    "properties": {
+                      "note": {
+                        "type": "string"
+                      },
+                      "stars": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "stars"
+                    ],
+                    "type": [
+                      "null",
+                      "object"
+                    ]
                   },
                   "name": {
                     "type": "string"
@@ -1551,11 +2283,246 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false,
         "title": "Mark a recipe as cooked"
+      }
+    },
+    {
+      "name": "rate_recipe",
+      "title": "Rate a recipe",
+      "description": "Record the user's stars for a recipe, 1 to 5, for \"five stars\", \"that one was a 3\", \"best curry we've had\", with an optional note on why. One rating per user and recipe; rating again replaces it. The stars join the recipe's rating: the rating and rating_count every tool returns average the source site's ratings and ask.recipes users' stars together, and the user's own stars come back as my_rating. When the user also says they cooked it, mark_cooked with rating does both in one call.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "recipe id to rate",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "note": {
+            "description": "why, in the user's words, e.g. 'too sweet, halve the sugar'; at most 200 characters; empty keeps the note from the earlier rating",
+            "type": "string"
+          },
+          "stars": {
+            "description": "1 to 5 stars; replaces the user's earlier rating of this recipe",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "stars"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "recipe": {
+            "properties": {
+              "askrecipes_ratings": {
+                "type": "integer"
+              },
+              "calories": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "carbs_g": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "description": {
+                "type": "string"
+              },
+              "diets": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "fat_g": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "fiber_g": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "id": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "main_protein": {
+                "type": "string"
+              },
+              "my_rating": {
+                "properties": {
+                  "note": {
+                    "type": "string"
+                  },
+                  "stars": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "stars"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "nutrition_for": {
+                "type": "string"
+              },
+              "protein_g": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "rating": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "rating_count": {
+                "type": "integer"
+              },
+              "scale_class": {
+                "type": "string"
+              },
+              "servings": {
+                "type": [
+                  "null",
+                  "integer"
+                ]
+              },
+              "source_site": {
+                "type": "string"
+              },
+              "source_url": {
+                "type": "string"
+              },
+              "sugar_g": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "total_minutes": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "rating_count",
+              "source_site",
+              "source_url"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "recipe"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Rate a recipe"
+      }
+    },
+    {
+      "name": "remove_from_household",
+      "title": "Remove someone from the household",
+      "description": "Take another member out of the user's household by the name get_household lists, for \"remove Sam from the household\". Only the household's creator can do it; when the creator leaves, the longest-standing member takes over. The removed person keeps their account and their own diary entries; the shared pantry and cookbooks stay. Confirm with the user before calling.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "the member's name as get_household lists it",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "in_household": {
+            "description": "false when this account shares a kitchen with nobody yet",
+            "type": "boolean"
+          },
+          "members": {
+            "items": {
+              "properties": {
+                "creator": {
+                  "description": "the member who created the household; the only one who can remove others",
+                  "type": "boolean"
+                },
+                "joined_on": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "you": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "joined_on"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "in_household",
+          "members"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Remove someone from the household"
       }
     },
     {
@@ -1667,7 +2634,7 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": true,
         "openWorldHint": false,
         "readOnlyHint": false,
@@ -1743,7 +2710,7 @@
     {
       "name": "search_recipes",
       "title": "Search recipes",
-      "description": "Search human-rated recipes for a what-to-cook or what-to-eat question: dinner tonight, cooking for guests, a quick weeknight meal, a protein or calorie target, macros for a cut or a bulk, meal prep for the week. Every result links to its source. Filters by time, rating, review count, diet (vegetarian, vegan, gluten_free, dairy_free, nut_free, judged from the ingredient list) and nutrition (calories, protein, fat, carbs, sugar, fiber per serving as reported by the source). A nutrition filter only returns recipes whose yield is stated in servings, so the numbers are per serving; recipes without nutrition data are excluded. Results rank by how many people rated them; min_rating and min_reviews cut below a threshold only when passed. exclude_ingredients leaves out recipes using any of the ingredients named, for building a week without repeats. The user's profile, when they set one in the app, applies on top: allergens and dislikes are always excluded, its diets are always on, and its time budget is the default when max_total_minutes is not passed; pass max_total_minutes=-1 to lift it.",
+      "description": "Search recipes for a what-to-cook or what-to-eat question: dinner tonight, cooking for guests, a quick weeknight meal, a protein or calorie target, macros for a cut or a bulk, meal prep for the week. Every result links to its source. rating and rating_count average the source site's ratings with ask.recipes users' stars; my_rating is the user's own. Filters by time, rating, review count, diet (vegetarian, vegan, gluten_free, dairy_free, nut_free, judged from the ingredient list) and nutrition (calories, protein, fat, carbs, sugar, fiber per serving as reported by the source). A nutrition filter only returns recipes whose yield is stated in servings, so the numbers are per serving; recipes without nutrition data are excluded. Results rank by how closely they match the query; min_rating and min_reviews cut rated recipes below a threshold only when passed, and never drop a recipe nobody has rated or a private upload. exclude_ingredients leaves out recipes using any of the ingredients named, for building a week without repeats. main_protein keeps recipes whose main protein is one of the values passed, for week rules like one chicken, two fish and three vegetarian dinners; every result carries main_protein. The user's profile, once saved with update_profile, applies on top: allergens and dislikes are always excluded, its diets are always on, and its time budget is the default when max_total_minutes is not passed; pass max_total_minutes=-1 to lift it. When people are saved on the profile, who names those eating tonight, by name or by role such as adults or kids, and only their allergens and dislikes apply, for \"the kids aren't home\"; empty means everyone. ask_user, when present, says no profile is saved yet and what to offer. check, present when the profile has allergens, reminds you that exclusions match whole words and a sauce or spice mix can hide one; read the ingredients with get_recipe before recommending.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1776,6 +2743,16 @@
           "limit": {
             "description": "max results, default 10, max 50",
             "type": "integer"
+          },
+          "main_protein": {
+            "description": "only recipes whose main protein is one of these: chicken, turkey, duck, goose, quail, pheasant, guinea_fowl, beef (with veal), pork (with ham, bacon and sausage), lamb (with mutton), goat, venison, bison, rabbit, fish, shrimp (with prawns), seafood (other shellfish, squid, octopus), egg, legume (beans, lentils, chickpeas, tofu), none; e.g. ['beef','pork','lamb'] for red meat or ['fish','shrimp','seafood']; judged from the ingredients, so chicken stock alone does not make a chicken dish",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
           },
           "max_calories": {
             "description": "only recipes with at most this many calories per serving, e.g. 300",
@@ -1810,11 +2787,11 @@
             "type": "number"
           },
           "min_rating": {
-            "description": "only recipes the source rates at least this many stars, e.g. 4.5; off unless passed",
+            "description": "only recipes rated at least this many stars, e.g. 4.5, source ratings and ask.recipes stars averaged together; recipes nobody has rated yet and private uploads stay in; off unless passed",
             "type": "number"
           },
           "min_reviews": {
-            "description": "only recipes with at least this many source ratings, e.g. 25; off unless passed",
+            "description": "only recipes with at least this many ratings, source and ask.recipes together, e.g. 25; recipes with no rating at all and private uploads stay in; off unless passed",
             "type": "integer"
           },
           "nut_free": {
@@ -1836,6 +2813,16 @@
           "vegetarian": {
             "description": "only vegetarian recipes: no meat, poultry, fish, seafood or gelatin in the ingredients",
             "type": "boolean"
+          },
+          "who": {
+            "description": "who is eating, by the names or roles saved as people on the profile, e.g. ['Dad','Ana'] or ['adults'] when the kids are out, ['kids'] when only they eat; only those people's allergens and dislikes apply on top of the household's; leave empty for everyone",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
           }
         },
         "required": [
@@ -1845,9 +2832,18 @@
       },
       "outputSchema": {
         "properties": {
+          "ask_user": {
+            "type": "string"
+          },
+          "check": {
+            "type": "string"
+          },
           "recipes": {
             "items": {
               "properties": {
+                "askrecipes_ratings": {
+                  "type": "integer"
+                },
                 "calories": {
                   "type": [
                     "null",
@@ -1887,6 +2883,26 @@
                 "id": {
                   "minimum": 0,
                   "type": "integer"
+                },
+                "main_protein": {
+                  "type": "string"
+                },
+                "my_rating": {
+                  "properties": {
+                    "note": {
+                      "type": "string"
+                    },
+                    "stars": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "stars"
+                  ],
+                  "type": [
+                    "null",
+                    "object"
+                  ]
                 },
                 "name": {
                   "type": "string"
@@ -2078,7 +3094,7 @@
     {
       "name": "share_recipe",
       "title": "Create a share link",
-      "description": "Create a share link for one of the user's uploaded recipes, for \"send this to my wife\", \"share it with Tom\", \"give me a link\", \"add this to MacroFactor\". Returns a share.ask.recipes URL that opens without an account and is not listed or indexed; the page credits the recipe's original source and carries schema.org Recipe markup, so apps that import a recipe from a link can read it. Only recipes the user uploaded can be shared; for other recipes the source link is the thing to share.",
+      "description": "Create a share link for a recipe, for \"send this to my wife\", \"share it with Tom\", \"give me a link\", \"add this to MacroFactor\". Works for any recipe the user can read: the corpus, their own uploads and the uploads of people in their household. Returns a share.ask.recipes URL that opens without an account and is not listed or indexed; the page credits the recipe's source and its licence and carries schema.org Recipe markup, so apps that import a recipe from a link can read it. Recipes imported from Cookidoo cannot be shared.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2168,7 +3184,7 @@
     {
       "name": "update_cookbook",
       "title": "Rename or describe a cookbook",
-      "description": "Rename a cookbook or change its description, for \"call it Sunday Roasts instead\". Recipes stay where they are.",
+      "description": "Rename a cookbook, change its description, or share it with the household, for \"call it Sunday Roasts instead\" or \"share my Christmas cookbook with the family\". Recipes stay where they are. The default cookbook stays personal.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -2183,6 +3199,13 @@
           "name": {
             "description": "new name; leave empty to keep it",
             "type": "string"
+          },
+          "shared": {
+            "description": "true moves the cookbook to the household so every member sees it, false makes it personal to this user again; leave out to keep it as is",
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         },
         "required": [
@@ -2207,6 +3230,9 @@
           },
           "recipe_count": {
             "type": "integer"
+          },
+          "shared": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -2217,11 +3243,547 @@
         "type": "object"
       },
       "annotations": {
-        "destructiveHint": false,
+        "destructiveHint": true,
         "idempotentHint": true,
         "openWorldHint": false,
         "readOnlyHint": false,
         "title": "Rename or describe a cookbook"
+      }
+    },
+    {
+      "name": "update_household",
+      "title": "Rename the household or the user in it",
+      "description": "Rename the household or change what it calls the user, for \"call our household Casa Silva\", \"in the household I'm Mum, not Ana\". Names are what who on a search and cooked_by in the diary use.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "household_name": {
+            "description": "new name for the household; leave empty to keep it",
+            "type": "string"
+          },
+          "my_name": {
+            "description": "new name for the user inside the household; leave empty to keep it",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "in_household": {
+            "description": "false when this account shares a kitchen with nobody yet",
+            "type": "boolean"
+          },
+          "members": {
+            "items": {
+              "properties": {
+                "creator": {
+                  "description": "the member who created the household; the only one who can remove others",
+                  "type": "boolean"
+                },
+                "joined_on": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "you": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "joined_on"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "in_household",
+          "members"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Rename the household or the user in it"
+      }
+    },
+    {
+      "name": "update_profile",
+      "title": "Remember how the household eats",
+      "description": "Save what the user says about how they eat so it holds across sessions and clients: \"we don't eat cilantro\" is add_dislikes, \"my daughter can't have berries or tomatoes\" is add_allergens, \"we love meat\" is add_likes, \"weeknights are 30 minutes max\" is time_budget_minutes, \"we're five\" is household_size, \"grams please\" is units=metric. Only the fields passed change; lists are added to or removed from, never replaced, so nothing already saved is lost. Pass 0 for a number to clear it. Something one person cannot or will not eat goes on that person under people, so a search with who can leave it out when they are not at the table; what everyone avoids goes on the household lists. Give each person a role (kid, adult, parent, guest) when the user says it, so who can name a group. From then on allergens and dislikes are excluded from every search as whole words, vegetarian, vegan, gluten_free, dairy_free and nut_free diets stay on, and the time budget is the default time limit. Returns the whole profile after the change; read it back to the user in one short list. When allergens were added it carries a note to pass on once: exclusions match whole words, so for a serious allergy the user should still read ingredients and labels themselves.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "add_allergens": {
+            "description": "ingredients nobody in the household may eat, medical or otherwise, one per entry, e.g. ['peanuts','berries','tomatoes']; excluded from every search as whole words",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "add_cuisines": {
+            "description": "cuisines the household likes, e.g. ['italian','mexican','thai']; stored for you to read",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "add_diets": {
+            "description": "diets followed; vegetarian, vegan, gluten_free, dairy_free and nut_free switch the matching filter on for every search, any other value is stored for you to read",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "add_dislikes": {
+            "description": "ingredients the household avoids by taste, e.g. ['cilantro','mushrooms']; excluded from every search as whole words",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "add_likes": {
+            "description": "ingredients or dishes the household loves, e.g. ['meat','pasta','spicy food']; nothing is filtered on them, read them to steer what you suggest",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "calories_per_day": {
+            "description": "daily calorie goal when the user tracks one; 0 clears it",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "carbs_g_per_day": {
+            "description": "daily carbohydrate goal in grams; 0 clears it",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "fat_g_per_day": {
+            "description": "daily fat goal in grams; 0 clears it",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "household_size": {
+            "description": "how many people usually eat, e.g. 5 for two adults and three children; 0 clears it",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "people": {
+            "description": "people in the household with a role and what applies to them alone: 'Sam, our kid, can't have berries' is people=[{name:'Sam', role:'kid', add_allergens:['berries']}]; what everyone avoids goes on the household lists instead. Each entry changes only that person and only the fields passed",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "add_allergens": {
+                  "description": "ingredients this person cannot eat; excluded whenever they are eating",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "add_dislikes": {
+                  "description": "ingredients this person avoids by taste; excluded whenever they are eating",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "add_likes": {
+                  "description": "what this person loves; read, never filtered",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "name": {
+                  "description": "the person's name as the user says it, e.g. 'Sam' or 'Dad'; matched case-insensitively, created on first use",
+                  "type": "string"
+                },
+                "remove_allergens": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "remove_dislikes": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "remove_likes": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "role": {
+                  "description": "one word for who they are in the household, e.g. 'kid', 'adult', 'parent', 'guest'; who on a search accepts a role as well as a name, so 'the kids are out' is who=['adults']; empty string clears it",
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "protein_g_per_day": {
+            "description": "daily protein goal in grams; 0 clears it",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "remove_allergens": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "remove_cuisines": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "remove_diets": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "remove_dislikes": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "remove_likes": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "remove_people": {
+            "description": "names to take off the profile",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "time_budget_minutes": {
+            "description": "most minutes a usual dinner may take in total; becomes the default time limit on every search; 0 clears it",
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "units": {
+            "description": "metric or us, the measurements the user wants to read; get_recipe converts amounts and oven temperatures to it; empty string clears it",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "outputSchema": {
+        "properties": {
+          "allergens": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "calories_per_day": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "carbs_g_per_day": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "cuisines": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "diets": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "dislikes": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "fat_g_per_day": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "household": {
+            "description": "present when the user shares a kitchen with other ask.recipes accounts; their allergens and dislikes apply to searches for everyone",
+            "properties": {
+              "in_household": {
+                "description": "false when this account shares a kitchen with nobody yet",
+                "type": "boolean"
+              },
+              "members": {
+                "items": {
+                  "properties": {
+                    "creator": {
+                      "description": "the member who created the household; the only one who can remove others",
+                      "type": "boolean"
+                    },
+                    "joined_on": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "you": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "joined_on"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "in_household",
+              "members"
+            ],
+            "type": [
+              "null",
+              "object"
+            ]
+          },
+          "household_size": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "likes": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "people": {
+            "items": {
+              "properties": {
+                "allergens": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "dislikes": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "likes": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": [
+                    "null",
+                    "array"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "role",
+                "allergens",
+                "dislikes",
+                "likes"
+              ],
+              "type": "object"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "protein_g_per_day": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "set": {
+            "description": "false when nothing has been saved yet",
+            "type": "boolean"
+          },
+          "time_budget_minutes": {
+            "type": [
+              "null",
+              "integer"
+            ]
+          },
+          "units": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "set",
+          "diets",
+          "allergens",
+          "dislikes",
+          "likes",
+          "cuisines",
+          "people"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Remember how the household eats"
       }
     },
     {
@@ -2300,7 +3862,7 @@
       }
     }
   ],
-  "version": "1.2.0",
+  "version": "1.3.0",
   "icon": "https://ask.recipes/icon-512.png",
   "tags": [
     "recipes",

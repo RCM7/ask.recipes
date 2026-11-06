@@ -4,7 +4,7 @@
 [![LobeHub listing](https://lobehub.com/badge/mcp/ask-recipes)](https://lobehub.com/mcp/ask-recipes)
 Also on [Smithery](https://smithery.ai/servers/rcm7/ask-recipes).
 
-Your AI's cookbook. A remote MCP server: connect it once and your agent finds recipes, checks nutrition, cooks from what is in the fridge, keeps your cookbooks and pantry, remembers what you cooked, keeps your own recipes and sends any of them to your Thermomix.
+Your AI's cookbook. A remote MCP server: connect it once and your agent finds recipes, checks nutrition, cooks from what is in the fridge, remembers how your household eats, keeps your cookbooks and pantry, remembers what you cooked, keeps your own recipes and sends any of them to your Thermomix.
 
 Free. No ads. Every recipe links to its source.
 
@@ -40,7 +40,7 @@ then `/mcp` to sign in.
 
 **Anything else**: streamable HTTP, OAuth 2.1 with PKCE and dynamic client registration. Discovery at `https://mcp.ask.recipes/.well-known/oauth-protected-resource`.
 
-Sign-in is an email address and the code sent to it. No password, no newsletter.
+Sign-in is an email address and the code sent to it. No password. The newsletter is off unless you tick the box.
 
 ## What to ask
 
@@ -53,6 +53,11 @@ Sign-in is an email address and the code sent to it. No password, no newsletter.
 - "What's in my Stews cookbook?"
 - "Bought rice, eggs and two chickens." then later "What can I make with what I have?"
 - "We made the curry tonight, kids loved it." then later "What did we cook last week?"
+- "That lasagna was a 4."
+- "We don't eat cilantro, and Sam can't have berries."
+- "Plan dinners Monday to Friday: three vegetarian, one chicken, one fish." then "What do I need to buy?"
+- "Share my pantry with my partner."
+- "Import my Paprika recipes."
 - "Keep this family recipe: ..." or "Here's a photo of my mum's recipe card, keep it."
 - "Give me a link to send my sister the lasagna I uploaded."
 - "Send the lasagna to my Bimby."
@@ -61,22 +66,37 @@ Sign-in is an email address and the code sent to it. No password, no newsletter.
 
 | tool | does |
 |---|---|
-| `search_recipes` | Search by dish or ingredient. Filters: total time, rating, review count, diet (vegetarian, vegan, gluten-free, dairy-free, nut-free), calories, protein, fat, carbs, sugar, fiber, ingredients to leave out, head count. |
+| `search_recipes` | Search by dish or ingredient. Filters: total time, rating, review count, diet (vegetarian, vegan, gluten-free, dairy-free, nut-free), calories, protein, fat, carbs, sugar, fiber, main protein, ingredients to leave out, head count. |
 | `find_by_ingredients` | Rank recipes by how many of your ingredients they use and how few extra they need. Your pantry counts as on hand; with nothing passed it cooks from the pantry alone. |
 | `get_recipe` | One recipe in full: ingredients, steps, times, yield, nutrition, source link. Scales the ingredients to a servings number. |
 | `get_pantry`, `add_to_pantry`, `remove_from_pantry` | What is in your kitchen, kept by talking: "bought milk and onions", "used the last eggs". |
 | `save_recipe`, `unsave_recipe`, `list_saved` | Your collection, kept in cookbooks, with a note per recipe and when you last cooked it. Kept across sessions and clients. |
 | `list_cookbooks`, `create_cookbook`, `update_cookbook`, `delete_cookbook` | Named cookbooks ("Stews", "BBQ", "Christmas"), created on first use. Deleting one never loses a recipe. |
-| `mark_cooked`, `cooked_history` | A cooking diary kept by talking: what you cooked, when, and how it went. Your agent reads it before planning a week so nothing repeats. |
+| `mark_cooked`, `cooked_history` | A cooking diary kept by talking: what you cooked, when, how it went, and your stars if you gave a verdict. Your agent reads it before planning a week so nothing repeats. |
+| `rate_recipe` | Your stars for a recipe, 1 to 5, with an optional note. Rating again replaces them. |
+| `get_profile`, `update_profile` | How the household eats: allergens, dislikes, likes, diets, weeknight time, units and goals, with what applies to each person alone. Applied to every search. |
+| `get_household`, `invite_to_household`, `update_household`, `leave_household`, `remove_from_household` | Share a kitchen: one pantry, one cooking diary, shared cookbooks, and everyone's allergens on a search for everyone. |
 | `upload_recipe` | A private recipe of your own: typed, dictated, from a photo, or extracted from a web page. |
+| `import_recipes` | A one-time link to drop an export file from Paprika, Mela or Crouton. Every recipe stays private to you. |
 | `share_recipe` | An unlisted link to one of your uploaded recipes, readable without an account. |
 | `connect_cookidoo`, `disconnect_cookidoo` | Link your Cookidoo account (Thermomix / Bimby) through a one-time form. |
 | `send_to_thermomix` | Any recipe into your Cookidoo as a private created recipe, with time, temperature and speed on every step, ready for guided cooking. |
 | `list_cookidoo_recipes`, `search_cookidoo`, `import_cookidoo_recipe` | Your own Cookidoo recipes, Cookidoo's catalogue through your account, and a copy of one into your private collection. |
 
+## Prompts
+
+| prompt | does |
+|---|---|
+| `set_up_my_kitchen` | A few questions once about who eats at home, allergies, dislikes, favourites, diets, weeknight time and units. Every search after that respects them. |
+| `cook_what_i_have` | Recipes ranked by what you have on hand, with what each one is missing. |
+| `dinner_tonight` | A well-rated dinner within a time, serving and diet limit. |
+| `plan_my_week` | A week of dinners from who is eating and rules like three vegetarian, one chicken, one fish, without repeating recent dinners. |
+| `shopping_list` | One list for several recipes or the week's plan, scaled to who is eating, pantry crossed off. |
+
 ## Good to know
 
-- Search ranks by how many people rated a recipe and applies no rating cut on its own. Ask for well-rated only and your agent passes a minimum.
+- Search ranks by how closely a recipe matches the query and applies no rating cut on its own. Ask for well-rated only and your agent passes a minimum.
+- A recipe's rating is one number: the source site's ratings and ask.recipes users' stars averaged together, weighted by count. Your own stars come back separately as `my_rating`.
 - Nutrition is per serving as the source published it. Nutrition filters only return recipes whose yield is stated in servings.
 - "Not chicken again": your agent can leave ingredients out of one search, matched as whole words, so "egg" never drops eggplant and "nut" never drops nutmeg or coconut.
 - From six people up, dishes cooked in one vessel (stews, braises, soups, casseroles, tray bakes, roasts) rank ahead of dishes cooked per portion, and your agent can leave the per-portion ones out.
